@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "es2020",
+    "lib": ["ESNext", "DOM"],
+    "module": "ESNext",
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "noEmit": false,
+    "skipLibCheck": true,
+    "outDir": "./lib",
+    "declaration": true,
+    "allowJs": true,
+    "rootDir": "src",
+    "moduleResolution": "Bundler",
+    "strictNullChecks": false,
+    "strictPropertyInitialization": false
+  },
+  "include": [
+    "src/**/*"
+  ]
+}

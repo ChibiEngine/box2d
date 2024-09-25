@@ -1,0 +1,33 @@
+name: Publish Package to NPM
+on:
+  release:
+    types: [published]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+      - run: |
+          git config --local user.email "github-action"
+          git config --local user.name "GitHub"
+      - run: yarn install
+      - run: npm version $GITHUB_REF_NAME -m "[RELEASE] %s"
+      - run: yarn build
+      - run: |
+          mkdir publish
+          cp -r dist publish
+          cp -r types publish
+          cp package.json LICENSE README.md publish
+      - run: cd publish && yarn publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: git push origin HEAD:main

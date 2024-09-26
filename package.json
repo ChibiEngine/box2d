@@ -1,6 +1,6 @@
 {
   "name": "@chibiengine/box2d",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Box2D Wrapper for ChibiEngine",
   "author": "Feavy",
   "type": "module",

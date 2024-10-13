@@ -14,7 +14,7 @@
     "rootDir": "src",
     "moduleResolution": "Bundler",
     "strictNullChecks": false,
-    "strictPropertyInitialization": false
+    "strictPropertyInitialization": false,
   },
   "include": [
     "src/**/*"

@@ -1,10 +1,11 @@
+//@ts-nocheck
+
 // Credit goes to https://gist.github.com/cbranch/260224a7e4699552d2dc
 // Gets a JSDraw instance which renders to a PIXI graphics object.
 // graphics: an instance of PIXI.Graphics
 // scale: the scaling factor to convert from Box2D coordinates to screen pixels
 import {Graphics} from "pixi.js";
-import box2D from "./Box2D";
-const Box2D = box2D;
+import "../Box2D";
 
 // TODO Make it non Pixi dependent (needs standard ChibiEngine Graphics)
 export function getPIXIDebugDraw(graphics: Graphics, scale: number) {

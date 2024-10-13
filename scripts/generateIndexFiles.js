@@ -23,15 +23,13 @@ const exportStatements = files.map((file) => {
     if(file === 'index.ts') return;
     const pathName = file.replace(/\.ts$/, '');
     const content = fs.readFileSync(path.resolve(directoryPath, file), { encoding: 'utf-8' });
-    if(content.includes("namespace")) {
-        return `import './${pathName}';`;
+    const isTypesOnly = content.startsWith('// types-only');
+    if(!content.includes('export default')) {
+        return `export ${isTypesOnly ? "type" : ""} * from './${pathName}';`;
     }
-    if(content.includes('export default')) {
         const fileName = pathName.split('/').pop();
-        return `export { default as ${fileName} } from './${pathName}';`
-    }
-    return `export * from './${pathName}';`;
-});
+        return `export ${isTypesOnly ? "type" : ""} { default as ${fileName} } from './${pathName}';`
+    });
 
 // Write the export statements to the index.ts file
 fs.writeFileSync(indexFilePath, exportStatements.join('\n'), { encoding: 'utf-8' });

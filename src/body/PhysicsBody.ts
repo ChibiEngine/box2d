@@ -1,7 +1,3 @@
-import "../Box2D";
-import b2Body = Box2D.b2Body;
-import b2_dynamicBody = Box2D.b2_dynamicBody;
-
 import {Component, GameObject, Vec2, IVec2} from "chibiengine";
 
 import PhysicsWorld from "../world/PhysicsWorld";
@@ -27,7 +23,7 @@ export default class PhysicsBody extends Component<"body", GameObject> {
   public readonly componentName = "body" as const;
   private target: GameObject;
 
-  public b2Body: b2Body;
+  public b2Body: Box2D.b2Body;
 
   private offset: IVec2;
 
@@ -75,42 +71,42 @@ export default class PhysicsBody extends Component<"body", GameObject> {
     return null;
   }
 
-  public apply(target: GameObject) {
-    console.log("PhysicsBody apply");
-
+  public async apply(target: GameObject) {
     const world = this.getParentWorld(target);
     this.world = world;
+
     if (!world) {
       throw new Error("PhysicsBody must be attached to a Container with a PhysicsWorld.");
     }
+
+    const {b2Vec2, b2BodyDef, b2_dynamicBody, b2_staticBody, b2_kinematicBody} = await world.box2D();
+    console.log("box2d", await world.box2D());
 
     this.target = target;
 
     const bodyX = world.pixelsToMeters(target.position.x) + world.pixelsToMeters(this.offset.x);
     const bodyY = world.pixelsToMeters(target.position.y) + world.pixelsToMeters(this.offset.y);
 
-    const bodyDef = new Box2D.b2BodyDef();
+    const bodyDef = new b2BodyDef();
     switch (this.type) {
       case "dynamic":
         bodyDef.set_type(b2_dynamicBody);
         break;
       case "static":
-        bodyDef.set_type(Box2D.b2_staticBody);
+        bodyDef.set_type(b2_staticBody);
         break;
       case "kinematic":
-        bodyDef.set_type(Box2D.b2_kinematicBody);
+        bodyDef.set_type(b2_kinematicBody);
         break
     }
-    bodyDef.set_position(new Box2D.b2Vec2(0, 0));
+    bodyDef.set_position(new b2Vec2(0, 0));
 
     this.b2Body = world.createBody(this, bodyDef);
 
-    for (const fixture of this.fixtures) {
-      fixture.create(this.b2Body, world);
-    }
+    await Promise.all(this.fixtures.map((fx) => fx.create(this.b2Body, world)));
 
-    this.b2Body.SetTransform(new Box2D.b2Vec2(bodyX, bodyY), 0);
-    this.b2Body.SetLinearVelocity(new Box2D.b2Vec2(0, 0));
+    this.b2Body.SetTransform(new b2Vec2(bodyX, bodyY), 0);
+    this.b2Body.SetLinearVelocity(new b2Vec2(0, 0));
     this.b2Body.SetAwake(true);
     this.b2Body.SetEnabled(true);
   }
@@ -164,15 +160,16 @@ export default class PhysicsBody extends Component<"body", GameObject> {
   public setType(type: BodyType) {
     this.type = type;
     if (this.b2Body) {
+      const {b2_dynamicBody, b2_staticBody, b2_kinematicBody} = this.world.instantiatedBox2D;
       switch (type) {
         case "dynamic":
           this.b2Body.SetType(b2_dynamicBody);
           break;
         case "static":
-          this.b2Body.SetType(Box2D.b2_staticBody);
+          this.b2Body.SetType(b2_staticBody);
           break;
         case "kinematic":
-          this.b2Body.SetType(Box2D.b2_kinematicBody);
+          this.b2Body.SetType(b2_kinematicBody);
           break
       }
     }
@@ -180,37 +177,27 @@ export default class PhysicsBody extends Component<"body", GameObject> {
   }
 
   public setDensity(density: number) {
-    for (const fixture of this.fixtures) {
-      fixture.setDensity(density);
-    }
+    this.fixtures.forEach((fx) => fx.setDensity(density));
     return this;
   }
 
   public setFriction(friction: number) {
-    for (const fixture of this.fixtures) {
-      fixture.setFriction(friction);
-    }
+    this.fixtures.forEach((fx) => fx.setFriction(friction));
     return this;
   }
 
   public setRestitution(restitution: number) {
-    for (const fixture of this.fixtures) {
-      fixture.setRestitution(restitution);
-    }
+    this.fixtures.forEach((fx) => fx.setRestitution(restitution));
     return this;
   }
 
   public setRestitutionThreshold(restitutionThreshold: number) {
-    for (const fixture of this.fixtures) {
-      fixture.setRestitutionThreshold(restitutionThreshold);
-    }
+    this.fixtures.forEach((fx) => fx.setRestitutionThreshold(restitutionThreshold));
     return this;
   }
 
   public setFilter(filter: Filter) {
-    for (const fixture of this.fixtures) {
-      fixture.setFilter(filter);
-    }
+    this.fixtures.forEach((fx) => fx.setFilter(filter));
     return this;
   }
 

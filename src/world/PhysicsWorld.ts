@@ -1,12 +1,8 @@
-import "../Box2D";
-
-import {Component, Container, FixedUpdatable, IVec2, VariableUpdatable} from "chibiengine";
-import b2World = Box2D.b2World;
-import b2Vec2 = Box2D.b2Vec2;
-import e_shapeBit = Box2D.b2Draw.e_shapeBit;
-import {getPIXIDebugDraw} from "../debug/DebugDraw";
+import {Component, Container, FixedUpdatable, IVec2, CompletablePromise} from "chibiengine";
 import {Graphics} from "pixi.js";
+import {getPIXIDebugDraw} from "../debug/DebugDraw";
 import PhysicsBody from "../body/PhysicsBody";
+import {Box2DModule, instantiateBox2D} from "../Box2D";
 
 interface PhysicsWorldOptions {
   gravity?: number;
@@ -15,13 +11,15 @@ interface PhysicsWorldOptions {
 }
 
 export default class PhysicsWorld extends Component<"world", Container> implements FixedUpdatable {
-  immediateApply = true;
-
+  public readonly componentName = "world" as const;
   public static readonly PIXELS_PER_METER = 32;
 
-  public readonly componentName = "world" as const;
+  immediateApply = false;
 
-  private b2World: b2World;
+  private _box2D: Box2DModule;
+  private _box2DPromise: CompletablePromise<Box2DModule> = new CompletablePromise();
+
+  private b2World: Box2D.b2World;
 
   public target: Container;
 
@@ -43,8 +41,11 @@ export default class PhysicsWorld extends Component<"world", Container> implemen
   }
 
   public async apply(target: Container): Promise<void> {
+    console.log("PhysicsWorld apply")
+    this._box2D = await instantiateBox2D();
+    const { b2Vec2, b2World, b2Draw } = this._box2D;
+
     this.target = target;
-    console.trace("PhysicsWorld apply");
 
     const gravity = new b2Vec2(0, this.gravity);
     this.b2World = new b2World(gravity);
@@ -52,19 +53,26 @@ export default class PhysicsWorld extends Component<"world", Container> implemen
     if(this.debugDraw) {
       this.debugGraphics = new Graphics();
       this.debugGraphics.zIndex = 1000;
+      console.log("PhysicsWorld apply debugDraw", target.pixi)
       target.pixi.sortableChildren = true;
       target.pixi.addChild(this.debugGraphics);
 
-      this.b2DebugDraw = getPIXIDebugDraw(this.debugGraphics, PhysicsWorld.PIXELS_PER_METER);
-      this.b2DebugDraw.SetFlags(e_shapeBit);
+      this.b2DebugDraw = getPIXIDebugDraw(this._box2D, this.debugGraphics, PhysicsWorld.PIXELS_PER_METER);
+      this.b2DebugDraw.SetFlags(b2Draw.e_shapeBit);
       this.b2DebugDraw.enable = true;
 
       this.b2World.SetDebugDraw(this.b2DebugDraw);
     }
+    this._box2DPromise.complete(this._box2D);
+    console.log("PhysicsWorld apply end")
   }
 
-  public get box2D() {
-    return this.b2World;
+  public async box2D(): Promise<Box2DModule> {
+    return this._box2DPromise.promise;
+  }
+
+  public get instantiatedBox2D(): Box2DModule {
+    return this._box2D;
   }
 
   public update() {
@@ -96,6 +104,7 @@ export default class PhysicsWorld extends Component<"world", Container> implemen
    * @returns Vector in Box2D meters
    */
   public vec2ToBox2D(vec: IVec2) {
-    return new b2Vec2(this.pixelsToMeters(vec.x), this.pixelsToMeters(vec.y));
+    if(!this._box2D) throw new Error("Box2D not initialized. Wait until PhysicsWorld is created.");
+    return new this._box2D.b2Vec2(this.pixelsToMeters(vec.x), this.pixelsToMeters(vec.y));
   }
 }

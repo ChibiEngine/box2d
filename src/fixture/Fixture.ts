@@ -1,12 +1,8 @@
-import "../Box2D";
-import b2Body = Box2D.b2Body;
-
 import Shape from "../shapes/Shape";
 import PhysicsWorld from "../world/PhysicsWorld";
 import Filter from "./Filter";
 
 export default class Fixture {
-
   private b2Fixture: Box2D.b2Fixture;
 
   private _density: number = 1;
@@ -22,6 +18,12 @@ export default class Fixture {
   }
 
   public setDensity(density: number) {
+    /**
+     * Replace with something like
+     * this.whenCreated(() => {
+     *   this.b2Fixture.SetDensity(density);
+     * });
+     */
     this._density = density;
     if(this.b2Fixture) {
       this.b2Fixture.SetDensity(density);
@@ -69,23 +71,24 @@ export default class Fixture {
     return this;
   }
 
-  public create(b2Body: b2Body, world: PhysicsWorld) {
-    const b2FixtureDef = new Box2D.b2FixtureDef();
-    b2FixtureDef.set_density(this._density);
-    b2FixtureDef.set_isSensor(this.sensor);
+  public async create(b2Body: Box2D.b2Body, world: PhysicsWorld) {
+    const {b2FixtureDef} = await world.box2D();
+    const fixtureDef = new b2FixtureDef();
+    fixtureDef.set_density(this._density);
+    fixtureDef.set_isSensor(this.sensor);
     if(this.friction) {
-      b2FixtureDef.set_friction(this.friction);
+      fixtureDef.set_friction(this.friction);
     }
     if(this.restitution) {
-      b2FixtureDef.set_restitution(this.restitution);
+      fixtureDef.set_restitution(this.restitution);
     }
     if(this.restitutionThreshold) {
-      b2FixtureDef.set_restitutionThreshold(this.restitutionThreshold);
+      fixtureDef.set_restitutionThreshold(this.restitutionThreshold);
     }
     if(this.filter) {
-      b2FixtureDef.set_filter(this.filter.b2Filter)
+      fixtureDef.set_filter(this.filter.b2Filter)
     }
-    b2FixtureDef.set_shape(this.shape.create(world));
-    this.b2Fixture = b2Body.CreateFixture(b2FixtureDef);
+    fixtureDef.set_shape(await this.shape.create(world));
+    this.b2Fixture = b2Body.CreateFixture(fixtureDef);
   }
 }

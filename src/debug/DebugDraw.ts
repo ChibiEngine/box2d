@@ -6,9 +6,10 @@
 // scale: the scaling factor to convert from Box2D coordinates to screen pixels
 import {Graphics} from "pixi.js";
 import "../Box2D";
+import {Box2DModule} from "../Box2D";
 
 // TODO Make it non Pixi dependent (needs standard ChibiEngine Graphics)
-export function getPIXIDebugDraw(graphics: Graphics, scale: number) {
+export function getPIXIDebugDraw(Box2D: Box2DModule, graphics: Graphics, scale: number) {
   function getColorFromDebugDrawCallback(color) {
     const col = Box2D.wrapPointer(color, Box2D.b2Color);
     const red = (col.get_r() * 255 * 255 * 255) | 0;

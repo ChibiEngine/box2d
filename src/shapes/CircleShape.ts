@@ -1,7 +1,3 @@
-import "../Box2D";
-import b2Shape = Box2D.b2Shape;
-import b2CircleShape = Box2D.b2CircleShape;
-
 import {Vec2} from "chibiengine";
 import PhysicsWorld from "../world/PhysicsWorld";
 import Shape from "./Shape";
@@ -10,7 +6,8 @@ import Shape from "./Shape";
 export default class CircleShape implements Shape {
   public constructor(public center: Vec2, public radius: number) {}
 
-  public create(world: PhysicsWorld): b2Shape {
+  public async create(world: PhysicsWorld): Promise<Box2D.b2Shape> {
+    const {b2CircleShape} = await world.box2D();
     const shape = new b2CircleShape();
     shape.set_m_p(world.vec2ToBox2D(this.center));
     shape.set_m_radius(world.pixelsToMeters(this.radius));

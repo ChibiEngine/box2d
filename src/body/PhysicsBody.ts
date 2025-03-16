@@ -1,4 +1,4 @@
-import {Component, GameObject, Vec2, IVec2} from "chibiengine";
+import {Component, GameObject, Vec2, IVec2, ChibiEvent} from "chibiengine";
 
 import PhysicsWorld from "../world/PhysicsWorld";
 import RectShape from "../shapes/RectShape";
@@ -9,6 +9,10 @@ import PolygonShape from "../shapes/PolygonShape";
 import CircleShape from "../shapes/CircleShape";
 import ChainShape from "../shapes/ChainShape";
 import Filter from "../fixture/Filter";
+import Contact from "../contact/Contact";
+import path from "path";
+import Manifold from "../contact/Manifold";
+import ContactImpulse from "../contact/ContactImpulse";
 
 export type BodyType = "static" | "dynamic" | "kinematic";
 
@@ -18,8 +22,9 @@ interface PhysicsBodyOptions {
   offset?: IVec2;
 }
 
-export default class PhysicsBody extends Component<"body", GameObject> {
-  // immediateApply = true;
+export default class PhysicsBody extends Component<"body"> {
+  public static readonly BODIES: Map<Box2D.b2Body, PhysicsBody> = new Map();
+
   public readonly componentName = "body" as const;
   private target: GameObject;
 
@@ -32,6 +37,11 @@ export default class PhysicsBody extends Component<"body", GameObject> {
   private fixtures: Fixture[] = [];
 
   private type: BodyType = "dynamic";
+
+  public onBeginContact = new ChibiEvent<[Contact]>();
+  public onEndContact = new ChibiEvent<[Contact]>();
+  public onPreSolve = new ChibiEvent<[Contact, Manifold]>();
+  public onPostSolve = new ChibiEvent<[Contact, ContactImpulse]>();
 
   // fixtures
   // center
@@ -71,7 +81,7 @@ export default class PhysicsBody extends Component<"body", GameObject> {
     return null;
   }
 
-  public async apply(target: GameObject) {
+  public async postApply(target: GameObject) {
     const world = this.getParentWorld(target);
     this.world = world;
 
@@ -80,7 +90,11 @@ export default class PhysicsBody extends Component<"body", GameObject> {
     }
 
     const {b2Vec2, b2BodyDef, b2_dynamicBody, b2_staticBody, b2_kinematicBody} = await world.box2D();
-    console.log("box2d", await world.box2D());
+
+    this.bindEvent(this.onBeginContact, this.world.onBeginContact);
+    this.bindEvent(this.onEndContact, this.world.onEndContact);
+    this.bindEvent(this.onPreSolve, this.world.onPreSolve);
+    this.bindEvent(this.onPostSolve, this.world.onPostSolve);
 
     this.target = target;
 
@@ -101,14 +115,21 @@ export default class PhysicsBody extends Component<"body", GameObject> {
     }
     bodyDef.set_position(new b2Vec2(0, 0));
 
+    // Require scene:
     this.b2Body = world.createBody(this, bodyDef);
 
-    await Promise.all(this.fixtures.map((fx) => fx.create(this.b2Body, world)));
+    await Promise.all(this.fixtures.map((fx) => fx.create(this, world)));
 
     this.b2Body.SetTransform(new b2Vec2(bodyX, bodyY), 0);
     this.b2Body.SetLinearVelocity(new b2Vec2(0, 0));
     this.b2Body.SetAwake(true);
     this.b2Body.SetEnabled(true);
+  }
+
+  public async destroy() {
+    await Promise.all(this.fixtures.map((fx) => fx.destroy()));
+    this.world.b2World.DestroyBody(this.b2Body);
+    PhysicsBody.BODIES.delete(this.b2Body);
   }
 
   public syncPosition() {
@@ -127,7 +148,7 @@ export default class PhysicsBody extends Component<"body", GameObject> {
       modifier(fixture);
     }
     if(this.b2Body) {
-      fixture.create(this.b2Body, this.world);
+      fixture.create(this, this.world);
     }
     return modifier ? this : fixture;
   }
@@ -176,6 +197,10 @@ export default class PhysicsBody extends Component<"body", GameObject> {
     return this;
   }
 
+  public getType() {
+    return this.type;
+  }
+
   public setDensity(density: number) {
     this.fixtures.forEach((fx) => fx.setDensity(density));
     return this;
@@ -204,5 +229,38 @@ export default class PhysicsBody extends Component<"body", GameObject> {
   public setAwake(awake: boolean) {
     this.b2Body.SetAwake(awake);
     return this;
+  }
+
+  public setStatic() {
+    return this.setType("static");
+  }
+
+  public setDynamic() {
+    return this.setType("dynamic");
+  }
+
+  public setKinematic() {
+    return this.setType("kinematic");
+  }
+
+  private bindEvent(bodyEvent: ChibiEvent<any>, worldEvent: ChibiEvent<any>) {
+    const addListener = () => {
+      worldEvent.subscribe((contact: Contact, ...rest: any[]) => {
+        if(contact.fixtureA.body === this || contact.fixtureB.body === this) {
+          // Trigger all listeners
+          bodyEvent.trigger(contact, ...rest);
+        }
+      });
+    };
+
+    if(bodyEvent.listeners.length > 0) {
+      addListener();
+    } else {
+      bodyEvent.onAddListener.subscribeOnce(addListener);
+    }
+  }
+
+  public static getBody(b2Body: Box2D.b2Body) {
+    return PhysicsBody.BODIES.get(b2Body);
   }
 }

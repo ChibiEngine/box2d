@@ -51,8 +51,8 @@ export default class PhysicsWorld extends Component<"world", Container> implemen
     this.debugDraw = options.debugDraw || false;
   }
 
-  public async apply(target: Container): Promise<void> {
-    console.trace("PhysicsWorld apply")
+  public async initialize(target: Container): Promise<void> {
+    console.trace("PhysicsWorld initialize")
     this._box2D = await instantiateBox2D();
     const {b2Vec2, b2World} = this._box2D;
 
@@ -62,10 +62,10 @@ export default class PhysicsWorld extends Component<"world", Container> implemen
     this.b2World = new b2World(gravity);
 
     this._box2DPromise.complete(this._box2D);
-    console.log("PhysicsWorld apply end")
+    console.log("PhysicsWorld initialize end")
   }
 
-  public async postApply(target: Container) {
+  public async preApply(target: Container) {
     const {b2Draw, JSContactListener} = this._box2D;
 
     if (this.debugDraw) {

@@ -36,7 +36,7 @@ export default class PhysicsBody extends Component<"body"> {
 
   private fixtures: Fixture[] = [];
 
-  private type: BodyType = "dynamic";
+  private bodyType: BodyType = "dynamic";
 
   public onBeginContact = new ChibiEvent<[Contact]>();
   public onEndContact = new ChibiEvent<[Contact]>();
@@ -52,7 +52,7 @@ export default class PhysicsBody extends Component<"body"> {
   // onBeginContact, onEndContact, onPreSolve, onPostSolve
   // awake
   // applyForce, applyImpulse, applyTorque, applyLinearImpulse
-  // 
+  //
 
 
   public get box2D() {
@@ -65,7 +65,7 @@ export default class PhysicsBody extends Component<"body"> {
     if(shape) {
       this.createFixture(shape);
     }
-    this.type = options.type || "dynamic";
+    this.bodyType = options.type || "dynamic";
     this.offset = options.offset || Vec2.ZERO;
   }
 
@@ -81,7 +81,7 @@ export default class PhysicsBody extends Component<"body"> {
     return null;
   }
 
-  public async postApply(target: GameObject) {
+  public async apply(target: GameObject) {
     const world = this.getParentWorld(target);
     this.world = world;
 
@@ -102,7 +102,7 @@ export default class PhysicsBody extends Component<"body"> {
     const bodyY = world.pixelsToMeters(target.position.y) + world.pixelsToMeters(this.offset.y);
 
     const bodyDef = new b2BodyDef();
-    switch (this.type) {
+    switch (this.bodyType) {
       case "dynamic":
         bodyDef.set_type(b2_dynamicBody);
         break;
@@ -179,7 +179,7 @@ export default class PhysicsBody extends Component<"body"> {
   }
 
   public setType(type: BodyType) {
-    this.type = type;
+    this.bodyType = type;
     if (this.b2Body) {
       const {b2_dynamicBody, b2_staticBody, b2_kinematicBody} = this.world.instantiatedBox2D;
       switch (type) {
@@ -198,7 +198,7 @@ export default class PhysicsBody extends Component<"body"> {
   }
 
   public getType() {
-    return this.type;
+    return this.bodyType;
   }
 
   public setDensity(density: number) {
